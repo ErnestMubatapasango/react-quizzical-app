@@ -1,5 +1,5 @@
 import React from "react"
-
+import {nanoid} from "nanoid"
   function App() {
     const [categories, setCategories] = React.useState([])
 
@@ -42,32 +42,122 @@ import React from "react"
     setIsSubmitted(true)
    }
     React.useEffect(() => {
+      
       if(isSubmitted){
         async function fetchQuestions(){
           const response =  await fetch(`https://opentdb.com/api.php?amount=10&category=${formData.category}&difficulty=${formData.difficulty}&type=${formData.questionType}`);
           const data = await response.json();
-          setQuestions(data.results)
-          console.log('Questions: ', data)
+          const formattedQuestions = data.results.map(question => {
+            
+            const answers = shuffleArray([
+              {
+                value: question.correct_answer,
+                isHeld: false,
+                id: nanoid()
+              },
+              ...question.incorrect_answers.map(answer => ({
+                value: answer,
+                isHeld: false,
+                id: nanoid()
+              }))
+            ])
+            return {...question, answers, id: nanoid()}
+          })
+          console.log('Wasasasasa',formattedQuestions[0].id)
+          setQuestions(formattedQuestions)
+
+          // console.log('Category: ', formData.category)
+          // console.log('Difficulty: ', formData.difficulty)
+          // console.log('Question Type: ', formData.questionType)
+          // console.log('Questions: ', data)
           setIsSubmitted(false)
         }
         fetchQuestions()
       }
     }, [isSubmitted, formData.category, formData.difficulty, formData.questionType])
 
-    const questionElements = questions.map((question, index) => {
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    
+    // function holdAnswer(questionId, answerId) {
+    //   //event.preventDefault()
+    //   // setQuestions(prevQuestion => {
+    //   //   return prevQuestion.map((question, index) => {
+    //   //     return newAnswersArray.map(answer => {
+    //   //       return answer.id === id ? {...answer, isHeld: !answer.isHeld} : answer
+    //   //     })
+    //   //   })
+    //   // })
+    //   console.log(questionId)
+    //   setQuestions(prevQuestions => {
+    //     return prevQuestions.map(question => {
+    //       return question.id === questionId ? 
+    //         question.answers.map(answer => {
+    //           return answer.id === answerId ? {...answer, isHeld: !answer.isHeld} : answer
+    //         }):
+    //         question
+    //       })        
+    //   })     
+    // }
+    function holdAnswer(questionId, answerId) {
+      setQuestions(prevQuestions => 
+        prevQuestions.map(question => {
+          if (question.id === questionId) {
+            const updatedAnswers = question.answers.map(answer => 
+              answer.id === answerId 
+                ? { ...answer, isHeld: !answer.isHeld } 
+                : { ...answer, isHeld: false }
+            );
+            return { ...question, answers: updatedAnswers };
+          } else {
+            return question;
+          }
+        })
+      );
+    }
+    const questionElements = questions.map((question) => {
+     
       return (
-        <div key={index}>
-          <h2>{question.question}</h2>
-          <p>{question.correct_answers} {question.incorrect_answers}</p>
-        </div>
+        <>
+          <div key={question.id}>
+            <h2 className="text-base text-[#4D5B9E] font-medium">{decodeHtmlEntities(question.question)}</h2>
+            <div  className="flex items-start gap-5 mt-2">
+              {
+                question.answers.map((answer) => {
+                  const styles = {
+                    backgroundColor: answer.isHeld ? "#D6DBF5" : ""
+                  }
+
+                  return (
+                    <p onClick={() => holdAnswer(question.id, answer.id)} key={answer.id} style={styles} className="border-[#4D5B9E] text-[#293264] font-medium text-xs px-3 py-1 border rounded-xl">
+                      {decodeHtmlEntities(answer.value)}
+                    </p>
+                  )
+                })
+              }
+            </div>
+          </div>
+          
+        </>
       )
     })
   
+    function decodeHtmlEntities(text) {
+      const parser = new DOMParser();
+      const decodedString = parser.parseFromString(text, 'text/html').body.textContent;
+      return decodedString;
+    }
   return (
     <div className="flex items-center justify-center w-full bg-app-pattern bg-cover bg-no-repeat h-screen">
       { 
         //console.log('Questions', questions)
-        questions.length === 0 ?
+        questions.length === 0 ? (
       <form 
         onSubmit={handleSubmit}
         className="flex flex-col items-center gap-5 justify-center w-full "
@@ -116,17 +206,21 @@ import React from "react"
               onChange={handleChange}
             >
               <option value=''>Any Type</option>
-              <option value='choice'>Multiple Choice</option>
+              <option value='multiple'>Multiple Choice</option>
               <option value='boolean'>True / False</option>
             </select>
           </div>
         </div> 
         <button type="submit" className="bg-[#4d5b93] text-white px-3 py-2 rounded-md shadow-lg mt-8">Start Quiz</button> 
-      </form> 
+      </form> )
       :
-      <div>
-        {questionElements}
-      </div>
+      (<div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-2">
+          {questionElements}
+        </div>
+        <button className="px-3 py-2 bg-[#4d5b9e] text-white rounded-lg mx-auto">Check Answers</button>
+      </div>)
+      
       }
     </div>
   )
