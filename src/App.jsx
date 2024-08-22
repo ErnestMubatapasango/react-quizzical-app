@@ -1,5 +1,7 @@
 import React from "react"
 import {nanoid} from "nanoid"
+import Confetti from "react-confetti"
+
   function App() {
     const [categories, setCategories] = React.useState([])
 
@@ -11,6 +13,8 @@ import {nanoid} from "nanoid"
     
     const [questions, setQuestions] = React.useState([])
     const [isSubmitted, setIsSubmitted] = React.useState(false)
+    //const [correctAnswer, setCorrectAnswer] = React.useState(false)
+    const [showConfetti, setShowConfetti] = React.useState(false)
 
   React.useEffect(() => {
     async function fetchCategory (){
@@ -85,42 +89,122 @@ import {nanoid} from "nanoid"
     }
 
     
-    // function holdAnswer(questionId, answerId) {
+    function holdAnswer(questionId, answerId) {
+      setQuestions(prevQuestions => {
+        return prevQuestions.map(question => {
+          return question.id === questionId ? 
+              {
+                ...question,
+                answers: question.answers.map(answer => {
+                  return answer.id === answerId ? {...answer, isHeld: !answer.isHeld} :  { ...answer, isHeld: false }
+                })
+              }
+            :
+            question
+          })        
+      })     
+    }
+    // const allHeld = questions.every(question => {
+    //   return question.answers.some(answer => answer.isHeld)        
+    // })
+    // function checkAnswers(){
     //   //event.preventDefault()
-    //   // setQuestions(prevQuestion => {
-    //   //   return prevQuestion.map((question, index) => {
-    //   //     return newAnswersArray.map(answer => {
-    //   //       return answer.id === id ? {...answer, isHeld: !answer.isHeld} : answer
-    //   //     })
-    //   //   })
-    //   // })
-    //   console.log(questionId)
+      
     //   setQuestions(prevQuestions => {
     //     return prevQuestions.map(question => {
-    //       return question.id === questionId ? 
-    //         question.answers.map(answer => {
-    //           return answer.id === answerId ? {...answer, isHeld: !answer.isHeld} : answer
-    //         }):
-    //         question
-    //       })        
-    //   })     
+    //       return {
+    //         ...question, answers: question.answers.map((answer) => ({
+    //           ...answer,
+    //           backgroundColor: answer.value === question.correct_answer ? 'green' : 'red', // Set red for incorrect answers
+    //         })),
+    //       }
+    //     })
+    //   })
     // }
-    function holdAnswer(questionId, answerId) {
-      setQuestions(prevQuestions => 
-        prevQuestions.map(question => {
-          if (question.id === questionId) {
-            const updatedAnswers = question.answers.map(answer => 
-              answer.id === answerId 
-                ? { ...answer, isHeld: !answer.isHeld } 
-                : { ...answer, isHeld: false }
-            );
-            return { ...question, answers: updatedAnswers };
-          } else {
-            return question;
-          }
+    function checkAnswers(event) {
+      event.preventDefault(); 
+      const allHeld = questions.every(question => {
+        return question.answers.some(answer => answer.isHeld)        
+      });
+      
+      const updatedQuestions = questions.map(question => 
+        ({
+          ...question,
+          answers: question.answers.map(answer => {
+            return answer.isHeld ? 
+              {
+                ...answer, 
+                isCorrect: answer.value === question.correct_answer,
+                backgroundColor: answer.value === question.correct_answer ? 'green' : 'red'
+              } 
+              : 
+              answer;
+          })
         })
       );
+      setQuestions(updatedQuestions);
+      const allCorrect = updatedQuestions.every(question => 
+        question.answers.some(answer => answer.isHeld && answer.isCorrect)
+      );
+      if (allHeld && allCorrect) {
+        setShowConfetti(true);
+      }
     }
+    // function checkAnswers(event) {
+    //   event.preventDefault(); 
+    //   const allHeld = questions.every(question => {
+    //     return question.answers.some(answer => answer.isHeld)        
+    //   })
+      
+    //   const correctAnswer = questions.map(question => 
+    //     ({
+    //       ...question,
+    //       answers: question.answers.map(answer => {
+    //         return answer.isHeld ? 
+    //           {
+    //             ...answer, 
+    //             backgroundColor: answer.value === question.correct_answer ? 'green' : 'red'
+    //           } 
+    //           : 
+    //           answer;
+    //       })
+    //     })
+    //   );
+    //   setQuestions(correctAnswer)
+    //   if (allHeld) {
+    //     setShowConfetti(true)
+    //   }
+      // setQuestions(prevQuestions => {
+      //   return prevQuestions.map(question => {
+      //     return {
+      //       ...question,
+      //       answers: question.answers.map(answer => {
+      //         // Add the backgroundColor property to each answer based on whether it is correct or not
+      //         return {
+      //           ...answer,
+      //           backgroundColor: answer.value === question.correct_answer ? 'green' : 'red'
+      //         };
+      //       })
+      //     };
+      //   });
+      // });
+    //}
+    // function holdAnswer(questionId, answerId) {
+    //   setQuestions(prevQuestions => 
+    //     prevQuestions.map(question => {
+    //       if (question.id === questionId) {
+    //         const updatedAnswers = question.answers.map(answer => 
+    //           answer.id === answerId 
+    //             ? { ...answer, isHeld: !answer.isHeld } 
+    //             : { ...answer, isHeld: false }
+    //         );
+    //         return { ...question, answers: updatedAnswers };
+    //       } else {
+    //         return question;
+    //       }
+    //     })
+    //   );
+    // }
     const questionElements = questions.map((question) => {
      
       return (
@@ -131,7 +215,7 @@ import {nanoid} from "nanoid"
               {
                 question.answers.map((answer) => {
                   const styles = {
-                    backgroundColor: answer.isHeld ? "#D6DBF5" : ""
+                     backgroundColor: answer.isHeld ? (answer.backgroundColor || "#D6DBF5") : ""
                   }
 
                   return (
@@ -215,10 +299,11 @@ import {nanoid} from "nanoid"
       </form> )
       :
       (<div className="flex flex-col gap-10">
+       { showConfetti && <Confetti/> }
         <div className="flex flex-col gap-2">
           {questionElements}
         </div>
-        <button className="px-3 py-2 bg-[#4d5b9e] text-white rounded-lg mx-auto">Check Answers</button>
+        <button onClick={checkAnswers} className="px-3 py-2 bg-[#4d5b9e] text-white rounded-lg mx-auto">Check Answers</button>
       </div>)
       
       }
